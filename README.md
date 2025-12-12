@@ -1,4 +1,4 @@
-# ZEN大学学習状況チェックシステム（Study progress check）
+# 学習状況チェックシステム（Study progress check）ZEN大学用
 
 パソコンのブラウザで動作する **ZEN大学学習状況チェックシステム** です。  
 
