@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>科目の更新</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* テキストエリア風に高さを合わせる */
+    .listbox {
+      width: 100%;
+      min-height: 420px;  /* 適宜調整 */
+      font-size: 14px;
+    }
+    .panel {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="h4 mb-0">科目の更新</h1>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.index') }}">一覧へ戻る</a>
+    </div>
+
+    <form method="post">
+      <div class="row g-3">
+        <!-- 左：未取得(0) -->
+        <div class="col-md-5">
+          <div class="panel">
+            <div class="fw-bold mb-2">未取得</div>
+            <select name="left_ids" size="20" multiple class="form-select listbox" aria-label="未取得一覧">
+              {% for c in left_items %}
+                <option value="{{ c.id }}">{{ c.kamokumei }}【{{ c.k_zokusei }}】</option>
+              {% endfor %}
+            </select>
+            <div class="form-text mt-1">複数選択: Ctrl / Cmd + クリック</div>
+          </div>
+        </div>
+
+        <!-- 中央：操作ボタン -->
+        <div class="col-md-2 d-flex flex-column justify-content-center align-items-center gap-2">
+          <button type="submit" name="action" value="to_right" class="btn btn-primary">
+            &raquo; 更新（0→1）
+          </button>
+
+          <!-- 逆方向が要らなければ、このボタンは削除OK -->
+          <button type="submit" name="action" value="to_left" class="btn btn-outline-secondary">
+            &laquo; 戻す（1→0）
+          </button>
+        </div>
+
+        <!-- 右：取得済(1) -->
+        <div class="col-md-5">
+          <div class="panel">
+            <div class="fw-bold mb-2">取得済</div>
+            <select name="right_ids" size="20" multiple class="form-select listbox" aria-label="取得済一覧">
+              {% for c in right_items %}
+                <option value="{{ c.id }}">{{ c.kamokumei }}【{{ c.k_zokusei }}】</option>
+              {% endfor %}
+            </select>
+            <div class="form-text mt-1">複数選択: Ctrl / Cmd + クリック</div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>アカデミックリテラシー・カリキュラム表（9列・見出し結合）</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+<style>
+  /* 位置指定の前提 */
+  .top-tab{ position: relative; }
+  .cardy  { position: relative; }
+
+  .acq-mark {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3px solid #16a34a;
+    background: #fff;
+    color: #16a34a;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,.1);
+  }
+
+  .row-tenkai_1 .rail .cell { min-height: 900px; }
+  .row-tenkai_2 .rail .cell { min-height: 1200px; }
+  .row-tenkai_3 .rail .cell { min-height: 1100px; }
+  .row-kokyu   .rail .cell { min-height: 2100px; }
+
+  :root{
+    --rail-w: 88px;      /* 左レール幅（ラベル列） */
+    --lane-w: 240px;     /* データ列の幅 */
+    --subhead-h: 40px;   /* サブヘッダー帯の高さ */
+    --row-h: 340px;      /* 各行の最低高さ */
+  }
+
+  html,body{height:100%; background:#f6f7f9;}
+  .canvas{
+    height:100vh;
+    overflow-y:auto;   /* 縦スクロールはcanvas */
+    overflow-x:hidden; /* 横はboard-wrapに任せる */
+    padding:16px;
+  }
+
+  /* 横スクロール用ラッパ（新規） */
+  .board-wrap{
+    width: 100%;
+    overflow-x: auto;               /* 横スクロールをここで */
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 2px solid #222;
+    background: #fff;
+  }
+
+  /* グリッド本体：枠やoverflowはwrapへ移譲 */
+  .board{
+    display:grid;
+    grid-template-columns: var(--rail-w)
+      /* 基盤(2列：情報,数理) */ repeat(2, var(--lane-w))
+      /* 多言語(1) */ var(--lane-w)
+      /* 世界理解(4列) */ repeat(4, var(--lane-w))
+      /* 社会接続(1) */ var(--lane-w)
+      /* 自由(1) */ var(--lane-w);
+    grid-auto-rows:auto;
+    min-width: calc(var(--rail-w) + (2+1+4+1+1) * var(--lane-w));
+    inline-size: max-content;   /* 中身の幅に合わせる（重要） */
+    min-inline-size: 100%;      /* 画面より狭い時は100% */
+    background: transparent;
+    border: none;
+    position:relative;
+  }
+
+  /* ===== レール＋帯の共通行 ===== */
+  .row-line{
+    grid-column:1 / -1;
+    display:grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    align-items:stretch;
+    z-index:20;
+  }
+  .row-line.top{ position:sticky; top:0; }
+  .row-line.bottom{ position:sticky; bottom:0; z-index:8; }
+
+  .left-label{
+    background:#000; color:#fff; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    border-right:2px solid #e5e7eb;
+  }
+  .left-label .vtext{ color:#fff; font-weight:800; font-size:16px; line-height:1; transform: rotate(-90deg); }
+  @supports (writing-mode: vertical-rl){
+    .left-label .vtext{ transform:none; writing-mode:vertical-rl; text-orientation:upright; letter-spacing:.2em; }
+  }
+
+  /* 上段タブ帯 */
+  .topbar{
+    background:#f4a640; border-bottom:2px solid #222;
+    padding:10px 12px;
+  }
+  .top-tabs{ display:flex; gap:16px; overflow-x:auto; white-space:nowrap; padding-bottom:4px; }
+  .top-tab{ background:#fff; border:2px solid #0d6efd; color:#0d6efd; font-weight:700; border-radius:8px; padding:6px 14px; flex:0 0 auto; }
+
+  /* ===== サブヘッダー帯 ===== */
+  .subband{
+    grid-column:1 / -1;
+    display:grid; grid-template-columns: var(--rail-w) repeat(9, var(--lane-w));
+    position:sticky; top:56px; z-index:9;
+  }
+  .subcell{
+    height:var(--subhead-h); display:flex; align-items:center; justify-content:center;
+    font-weight:800; border-right:2px solid #fff; color:#fff;
+  }
+  .rail-empty{ background:#fff; }
+  .band-blue{ background:#3a6ed9; }
+  .band-pink{ background:#e46b97; }
+  .band-mint{ background:#4fb8a8; }
+  .band-beig{ background:#c9b98c; }
+  .band-purp{ background:#a390c6; }
+
+  /* ===== データ行 ===== */
+  .rowgrid{
+    grid-column:1 / -1;
+    display:grid; grid-template-columns: var(--rail-w) repeat(9, var(--lane-w));
+  }
+
+  /* 左レール（行ラベル） */
+  .rail{ position:sticky; left:0; z-index:8; background:#fff; border-right:2px solid #e5e7eb; }
+  .rail .cell{
+    min-height: var(--row-h);
+    display:flex; align-items:center; justify-content:center;
+    border-bottom:2px solid #e5e7eb;
+  }
+  .vtext{
+    color:#000; font-weight:800; font-size:16px; line-height:1;
+    transform: rotate(-90deg);
+  }
+  @supports (writing-mode: vertical-rl){
+    .vtext{ transform:none; writing-mode: vertical-rl; text-orientation: upright; letter-spacing:.2em; }
+  }
+
+  /* データセル */
+  .cell{ padding:12px; background:#fff; border-right:2px solid #e5e7eb; border-bottom:2px solid #e5e7eb; min-height: var(--row-h); }
+  .lane--blue{ background:#eaf1ff; } .lane--pink{ background:#ffe8f0; }
+  .lane--mint{ background:#e6faf5; } .lane--beig{ background:#fff6e2; } .lane--purp{ background:#f3ecff; }
+
+  .subhead{ font-size:12px; font-weight:800; color:#667085; margin-bottom:6px; }
+  .cardy{ background:#fff; border:1px solid #d0d7de; border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:13px; line-height:1.35; box-shadow:0 1px 0 rgba(0,0,0,.03); }
+  .cardy .ttl{ font-weight:800; }
+
+  /* 赤文字版 */
+  .cardy-red { color: #dc2626; }
+  .cardy-red .ttl { color: inherit; }
+  .cardy-red a   { color: inherit; text-decoration: underline; }
+
+  /* 下部オレンジ帯 */
+  .footerbar{
+    background:#f4a640; border-top:2px solid #222; padding:8px 12px;
+  }
+  .footerbar .title{ background:#fff; border:2px solid #222; border-radius:6px; font-weight:800; text-align:center; padding:6px; }
+
+  /* ページ上部ツールバー */
+  .page-toolbar{
+    position: static;
+    top: 0;
+    z-index: 40;
+    background: #bfbdbd;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .page-toolbar a:hover { text-decoration: underline; }
+
+  /* ── 単位＆開講期バッジ ───────────────────────── */
+  .meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .badge-credit, .badge-term{
+    display:inline-block; font-weight:700; font-size:12px; line-height:1;
+    padding:6px 8px; border-radius:999px; border:1px solid #d0d7de;
+    background:#fff;
+  }
+  .badge-credit.credit-1{ background:#cfe9f3; } /* 水色：1単位 */
+  .badge-credit.credit-2{ background:#fff;     } /* 白：2単位   */
+  .badge-credit.credit-4{ background:#fff1c9; } /* 黄：4単位   */
+
+  .badge-term{ background:#f3f4f6; }
+
+  /* ── 右上凡例 ──────────────────────────────── */
+  .legend{
+    margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  }
+  .legend .legend-box{
+    border:1px solid #d0d7de; border-radius:8px; padding:8px 10px; background:#fff;
+  }
+  .legend .ttl{ font-weight:800; font-size:12px; color:#475467; margin-bottom:6px; }
+  .legend .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+  /* ====== Responsive: layout tuning by breakpoints ====== */
+  @media (max-width: 1400px) {
+    :root{ --rail-w: 80px; --lane-w: 220px; --row-h: 320px; --subhead-h: 38px; }
+    .subhead{ font-size: 12px; }
+  }
+  @media (max-width: 1200px) {
+    :root{ --rail-w: 72px; --lane-w: 200px; --row-h: 300px; --subhead-h: 36px; }
+    .cardy{ font-size: 12.5px; }
+    .cardy .ttl{ font-weight: 800; }
+    .top-tab{ padding: 6px 12px; }
+  }
+  @media (max-width: 992px) {
+    :root{ --rail-w: 56px; --lane-w: 190px; --row-h: 280px; --subhead-h: 34px; }
+    .left-label .vtext{
+      writing-mode: horizontal-tb !important;
+      transform: none !important;
+      letter-spacing: 0;
+      font-size: 14px;
+    }
+    .rail .cell{ padding: 8px; }
+    .subhead{ font-size: 11px; margin-bottom: 4px; }
+    .acq-mark{
+      width: 28px; height: 28px; font-size: 13px; border-width: 2px;
+      top: -6px; right: -6px;
+    }
+    .top-tabs{ scroll-snap-type: x mandatory; gap: 12px; }
+    .top-tabs .top-tab{ scroll-snap-align: start; }
+  }
+
+  /* スマホ */
+  @media (max-width: 576px) {
+    :root{
+      --rail-w: 0px;
+      --lane-w: min(86vw, 300px);
+      --row-h: 260px;
+      --subhead-h: 32px;
+    }
+    .board{
+      grid-template-columns: 1fr;
+      inline-size: 100%;
+      min-inline-size: 100%;
+    }
+    .subband{
+      grid-template-columns: repeat(9, var(--lane-w));
+      top: 48px;
+    }
+    .rowgrid{ grid-template-columns: repeat(9, var(--lane-w)); }
+    .rowgrid .rail,
+    .row-line .left-label{ display: none !important; }
+    .row-line.top{ top: 0; }
+    .subhead{ font-size: 10.5px; }
+    .cardy{ font-size: 12px; padding: 8px; }
+    .cardy .ttl{ font-weight: 800; }
+    .acq-mark{
+      width: 24px; height: 24px; font-size: 12px;
+      border-width: 2px; top: -6px; right: -6px;
+    }
+    .page-toolbar{ padding: 6px 8px; gap: 8px; }
+    .top-tabs{ gap: 8px; scroll-snap-type: x mandatory; }
+    .top-tabs .top-tab{
+      padding: 6px 10px; font-size: 13px; scroll-snap-align: start; white-space: nowrap;
+    }
+    .legend{ margin-left: 0; width: 100%; }
+  }
+
+  /* タッチ操作改善 */
+  .canvas, .board-wrap, .board, .top-tabs{ -webkit-overflow-scrolling: touch; }
+  .subband, .row-line.top{ backdrop-filter: saturate(1.1) blur(0px); }
+
+  /* スマホ時のサブヘッダーずれ修正 */
+  @media (max-width: 576px) {
+    .subband .rail-empty{ display: none !important; }
+    .subband{ grid-template-columns: repeat(9, var(--lane-w)); }
+  }
+
+  /* ==== Toolbar を Grid で左右固定 ==== */
+  .page-toolbar.modern-toolbar{
+    display: grid !important;
+    grid-template-columns: 1fr auto; /* 左:ボタン群 / 右:凡例 */
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+
+  /* 左のボタン群を横一列（必要なら折り返し） */
+  .toolbar-left{
+    display: flex !important;
+    gap: 12px;
+    flex-wrap: wrap;          /* 画面が狭い時だけ改行 */
+  }
+
+  /* 右の凡例は常に右端 */
+  .legend-modern{
+    justify-self: end;        /* ← 右端に固定 */
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* ====== 縦書き“誤爆”の完全封じ込め ====== */
+  /*（親から writing-mode が継承されてもここで打ち消す）*/
+  .page-toolbar,
+  .page-toolbar *{
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: normal;
+  }
+
+  /* ボタンは改行しない＆横並びを強制 */
+  .toolbar-btn,
+  .page-toolbar a{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;      /* 文字が1文字ずつ落ちるのを防ぐ */
+  }
+
+  /* スマホ時は凡例を2段目に落として左寄せ */
+  @media (max-width: 768px){
+    .page-toolbar.modern-toolbar{
+      grid-template-columns: 1fr;   /* 1列レイアウト */
+      row-gap: 10px;
+    }
+    .legend-modern{
+      justify-self: start;          /* 2段目で左寄せ表示 */
+      width: 100%;
+    }
+  }
+
+  .page-toolbar .btn {
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 8px 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .page-toolbar .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+
+  /* 科目区分バッジ（必修・選択必修） */
+  .badge-course {
+    display: inline-block;         /* ← inline-block維持でOK */
+    width: auto;                   /* ← 親幅に広がらないように */
+    max-width: max-content;        /* ← 内容サイズに合わせる（重要） */
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: #fff !important;
+    border: 2px solid transparent !important;
+    white-space: nowrap;           /* ← 折り返し防止 */
+  }
+  
+
+
+  /* 必修：青文字＋青枠 */
+  .legend .badge-course.required-course {
+    color: #2563eb !important;
+    border-color: #2563eb !important;
+  }
+
+  /* 選択必修：赤文字＋赤枠 */
+  .legend .badge-course.select-course {
+    color: #dc2626 !important;
+    border-color: #dc2626 !important;
+  }
+
+
+
+</style>
+</head>
+<body>
+
+{# ========= 単位・開講期バッジのJinjaマクロ ========= #}
+{% macro credit_chip(tani) -%}
+  {% set t = (tani|string).replace('単位','').strip() %}
+  {% if t == '1' %}
+    <span class="badge-credit credit-1">1単位</span>
+  {% elif t == '2' %}
+    <span class="badge-credit credit-2">2単位</span>
+  {% elif t == '4' %}
+    <span class="badge-credit credit-4">4単位</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro term_chip(kaikou_k) -%}
+  {% if kaikou_k %}
+    {% set s = kaikou_k|string %}
+    {% set s_norm = s.replace('・', ',').replace('、', ',').replace('　', ' ').replace(' ', ',') %}
+    {% set has1 = '1Q' in s_norm %}
+    {% set has2 = '2Q' in s_norm %}
+    {% set has3 = '3Q' in s_norm %}
+    {% set has4 = '4Q' in s_norm %}
+    {% if has1 and has3 %}
+      <span class="badge-term">1Q・3Q</span>
+    {% elif has2 and has4 %}
+      <span class="badge-term">2Q・4Q</span>
+    {% else %}
+      <span class="badge-term">{{ s.strip() }}</span>
+    {% endif %}
+  {% endif %}
+{%- endmacro %}
+
+<!-- 卒業要件チェック結果モーダル -->
+<div class="modal fade" id="reqModal" tabindex="-1" aria-labelledby="reqModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reqModalLabel">卒業要件チェック（不足項目）</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body">
+        {% if req_errors|default([]) and req_errors|length > 0 %}
+          <div class="alert alert-danger fw-semibold">
+            未達の要件が {{ req_errors|length }} 件あります。取得候補（科目名）や必要単位を確認してください。
+          </div>
+          <ol class="mb-0">
+            {% for e in req_errors %}
+              <li class="mb-3">
+                <div class="fw-bold">チェック{{ e.code }}：{{ e.title }}</div>
+                {% if e.have is defined %}
+                  <div class="small text-muted">現在：{{ e.have }} / 必要：{{ e.need }}　不足：{{ e.lack }}</div>
+                {% endif %}
+                {% if e.detail %}
+                  <div class="mt-1">未取得：</div>
+                  <ul class="mt-1">
+                    {% for n in e.detail %}
+                      <li>{{ n }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+                {% if e.suggest %}
+                  <div class="mt-1">取得候補：</div>
+                  <div class="small text-muted">
+                    {% for n in e.suggest %}
+                      <span class="badge text-bg-light border me-1 mb-1">{{ n }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <div class="alert alert-success m-0">不足はありません。すべての要件を満たしています 🎉</div>
+        {% endif %}
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <div class="text-muted small">
+          総取得単位：<span class="fw-bold">{{ total_credits|default(0) }}</span> / {{ total_need|default(124) }}
+          {% if total_ok|default(false) %}
+            <span class="text-success ms-1">（124単位 クリア）</span>
+          {% else %}
+            <span class="text-danger ms-1">（不足：{{ (total_need|default(124)) - (total_credits|default(0)) }}）</span>
+          {% endif %}
+        </div>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 一覧 -->
+<div class="canvas">
+  <!-- 上部ツールバー（ボードの外） -->
+
+
+<!-- 上部ツールバー（ボードの外） -->
+<!-- 上部ツールバー（ボードの外） -->
+<div class="page-toolbar d-flex align-items-center gap-5">
+  <!-- 左：ボタン -->
+  <div class="toolbar-left d-flex gap-2">
+    <a href="{{ url_for('main.update') }}" class="btn btn-primary">📊 更新画面へ</a>
+    <a href="{{ url_for('main.check_requirements') }}" class="btn btn-success">✅ 卒業要件チェック</a>
+    <!-- ★ AIボタン -->
+    <a href="{{ url_for('main.ca_intro') }}"
+       class="btn btn-info js-ca-intro"
+       data-video-url="{{ url_for('static', filename='mp4/猫アドバイス.mp4') }}"
+       data-ca-text="　　シーエーとはキャットのこと　だったのだ。">
+      📘 CAのアドバイス
+    </a>
+
+
+    <a id="dangerBtn"
+       class="btn btn-danger"
+       data-video-url="{{ url_for('static', filename='mp4/爆発素材.mp4') }}">
+      ⚠️ 絶対に押さないで
+    </a>
+
+
+    <a href="{{ url_for('main.logout') }}" class="btn btn-dark">🚪 ログアウト</a>
+  </div>
+
+  <!-- 凡例（すぐ右） -->
+  <div class="toolbar-right legend">
+
+    <!-- 単位数 -->
+    <div class="legend-box d-inline-block me-3">
+      <div class="ttl">単位数</div>
+      <div class="row">
+        <span class="badge-credit credit-1">1単位</span>
+        <span class="badge-credit credit-2">2単位</span>
+        <span class="badge-credit credit-4">4単位</span>
+      </div>
+    </div>
+
+    <!-- 開講期 -->
+    <div class="legend-box d-inline-block me-3">
+      <div class="ttl">開講期</div>
+      <div class="row">
+        <span class="badge-term">1Q・3Q</span>
+        <span class="badge-term">2Q・4Q</span>
+      </div>
+    </div>
+
+    <!-- 科目区分 -->
+    <div class="legend-box d-inline-block">
+      <div class="ttl">科目区分</div>
+      <div class="row">
+        <span class="badge-course required-course">必修(例)：アカデミックリテラシー</span>
+      </div>
+      <div class="row"> </div>
+      <div class="row">
+        <span class="badge-course select-course">選択必修(例)：情報セキュリティ概論</span>
+      </div>
+    </div>
+            
+
+  </div>
+</div>
+
+
+
+
+
+
+
+
+  <!-- 横スクロール用ラッパ -->
+  <div class="board-wrap">
+    <div class="board">
+
+      <!-- ===== 上段：導入ラベル + DBタブ ===== -->
+      <div class="row-line top">
+        <div class="left-label"><span class="vtext">導入</span></div>
+        <div class="top-tabs">
+          {% for r in do_list %}
+            <div class="top-tab">
+              {{ r.kamokumei }}
+              {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+              <div class="meta">
+                {{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}
+              </div>
+            </div>
+          {% else %}
+            <div class="top-tab">導入科目なし</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ===== 見出し帯（サブヘッダー） ===== -->
+      <div class="subband">
+        <div class="subcell rail-empty"> </div>
+        <div class="subcell band-blue" style="grid-column: span 2;">基盤リテラシー世界理解【>8単位】</div>
+        <div class="subcell band-pink">多言語情報理解【>8単位】</div>
+        <div class="subcell band-mint" style="grid-column: span 4;">世界理解【>26単位】</div>
+        <div class="subcell band-beig">社会接続</div>
+        <div class="subcell band-purp">自由</div>
+      </div>
+
+      <!-- ===== 行：基礎 ===== -->
+      <div class="rowgrid">
+        <div class="rail"><div class="cell"><span class="vtext">基礎</span></div></div>
+
+        <div class="cell lane--blue"><div class="subhead">情報</div>
+          {% for r in kiso_kiban_jo_1 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--blue"><div class="subhead">数理</div>
+          {% for r in kiso_kiban_su_1 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--pink"><div class="subhead">多言語</div>
+          {% for r in kiso_tagengo_1 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">文化・芸術</div>
+          {% for r in kiso_sekai_bunka_1 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">社会・ネットワーク</div>
+          {% for r in kiso_sekai_net_1 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">経済・マーケット</div>
+          {% for r in kiso_sekai_keizai_1 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">デジタル産業</div></div>
+        <div class="cell lane--beig"><div class="subhead">社会接続</div></div>
+        <div class="cell lane--purp"><div class="subhead">自由</div></div>
+      </div>
+
+      <!-- ===== 行：展開1 ===== -->
+      <div class="rowgrid row-tenkai_1">
+        <div class="rail"><div class="cell"><span class="vtext">展開1</span></div></div>
+
+        <div class="cell lane--blue"><div class="subhead">情報</div>
+          {% for r in tenkai_kiban_jo_1 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--blue"><div class="subhead">数理</div>
+          {% for r in tenkai_kiban_su_1 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--pink"><div class="subhead">多言語</div>
+          {% for r in tenkai_tagengo_1 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">文化・芸術</div>
+          {% for r in tenkai_sekai_bunka_1 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">社会・ネットワーク</div>
+          {% for r in tenkai_sekai_net_1 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">経済・マーケット</div>
+          {% for r in tenkai_shakai_keizai_1 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">デジタル産業</div>
+          {% for r in tenkai_shakai_deji_1 %}
+          <div class="cardy">
+            {% if r.kamokumei == "二次創作の歴史から見るネット文化" %}
+              <div class="ttl">{{ r.kamokumei }}</div>
+            {% else %}
+              <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% endif %}
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--beig"><div class="subhead">社会接続</div>
+          {% for r in kiso_shakai_1 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--purp"><div class="subhead">自由</div>
+          {% for r in kiso_jiyu_1 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+      </div>
+
+      <!-- ===== 行：展開2 ===== -->
+      <div class="rowgrid row-tenkai_2">
+        <div class="rail"><div class="cell"><span class="vtext">展開2</span></div></div>
+
+        <div class="cell lane--blue"><div class="subhead">情報</div>
+          {% for r in tenkai_kiban_jo_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--blue"><div class="subhead">数理</div>
+          {% for r in tenkai_kiban_su_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--pink"><div class="subhead">多言語</div>
+          {% for r in tenkai_tagengo_2 %}
+          <div class="cardy">
+            <div class="cardy-red">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">文化・芸術</div>
+          {% for r in tenkai_sekai_bunka_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">社会・ネットワーク</div>
+          {% for r in tenkai_sekai_net_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">経済・マーケット</div>
+          {% for r in tenkai_shakai_keizai_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">デジタル産業</div>
+          {% for r in tenkai_shakai_deji_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--beig"><div class="subhead">社会接続</div>
+          {% for r in kiso_shakai_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--purp"><div class="subhead">自由</div>
+          {% for r in kiso_jiyu_2 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+      </div>
+
+      <!-- ===== 行：展開3 ===== -->
+      <div class="rowgrid row-tenkai_3">
+        <div class="rail"><div class="cell"><span class="vtext">展開3</span></div></div>
+
+        <div class="cell lane--blue"><div class="subhead">情報</div>
+          {% for r in tenkai_kiban_jo_3 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--blue"><div class="subhead">数理</div>
+          {% for r in tenkai_kiban_su_3 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--pink"><div class="subhead">多言語</div></div>
+
+        <div class="cell lane--mint"><div class="subhead">文化・芸術</div>
+          {% for r in tenkai_sekai_bunka_3 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">社会・ネットワーク</div>
+          {% for r in tenkai_sekai_net_3 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">経済・マーケット</div></div>
+
+        <div class="cell lane--mint"><div class="subhead">デジタル産業</div>
+          {% for r in tenkai_shakai_deji_3 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--beig"><div class="subhead">社会接続</div>
+          {% for r in kiso_shakai_3 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--purp"><div class="subhead">自由</div>
+          {% for r in kiso_jiyu_3 %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+      </div>
+
+      <!-- ===== 行：考究 ===== -->
+      <div class="rowgrid row-kokyu">
+        <div class="rail"><div class="cell"><span class="vtext">考究</span></div></div>
+
+        <div class="cell lane--blue"><div class="subhead">情報</div>
+          {% for r in kokyu_jo %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--blue"><div class="subhead">数理</div>
+          {% for r in kokyu_su %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--pink"><div class="subhead">多言語</div></div>
+
+        <div class="cell lane--mint"><div class="subhead">文化・芸術</div>
+          {% for r in kokyu_bunka %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">社会・ネットワーク</div>
+          {% for r in kokyu_net %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">経済・マーケット</div>
+          {% for r in kokyu_keizai %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--mint"><div class="subhead">デジタル産業</div>
+          {% for r in kokyu_deji %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--beig"><div class="subhead">社会接続</div>
+          {% for r in kokyu_shakai %}
+          <div class="cardy">
+            <div class="ttl">{{ r.kamokumei }}</div>
+            {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark">済</span>{% endif %}
+            <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+          </div>
+          {% else %}<div class="cardy"><div class="ttl">該当なし</div></div>{% endfor %}
+        </div>
+
+        <div class="cell lane--purp"><div class="subhead">自由</div></div>
+      </div>
+
+      <!-- ===== 下部帯：卒研＋プロジェクト実践 ===== -->
+      <div class="row-line bottom">
+        <div class="left-label"><span class="vtext">卒研</span></div>
+        <div class="footerbar d-flex justify-content-center align-items-center flex-wrap gap-2">
+          {% for r in pj %}
+            <div class="cardy position-relative d-inline-flex align-items-center justify-content-center">
+              <div class="top-tab text-center">{{ r.kamokumei }}</div>
+              {% if uc_map.get(r.kamokumei) == "1" %}<span class="acq-mark" title="単位取得済み">済</span>{% endif %}
+              <div class="meta">{{ credit_chip(r.tani) }} {{ term_chip(r.kaikou_k) }}</div>
+            </div>
+          {% else %}
+            <div class="cardy d-inline-flex align-items-center justify-content-center">
+              <div class="ttl">該当なし</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div><!-- /.board -->
+  </div><!-- /.board-wrap -->
+  <!-- VOICEVOX クレジット -->
+  <div class="mt-3 text-center text-muted small">
+    本ページの音声合成には VOICEVOX:ずんだもん を利用しています。
+  </div>
+</div><!-- /.canvas -->
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='main.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var showCheckModal = {{ 'true' if (show_check_modal | default(false)) else 'false' }};
+  if (!showCheckModal) return;
+  var el = document.getElementById('reqModal');
+  if (!el) { console.warn('reqModal が見つかりません'); return; }
+  var modal = bootstrap.Modal.getOrCreateInstance(el);
+  modal.show();
+});
+
+
+
+
+</script>
+</body>
+</html>
